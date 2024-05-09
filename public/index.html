@@ -8,7 +8,57 @@
 </head>
 <body>
     <div id="app">
+        <button id="dark-mode-toggle">Toggle Dark Mode</button>
     </div>
     <script src="app.js"></script>
 </body>
 </html>
+```
+
+```css
+body {
+    font-family: Arial, sans-serif;
+    transition: background-color 300ms, color 300ms;
+}
+
+:root {
+    --background-color: #ffffff;
+    --text-color: #000000;
+}
+
+[data-theme="dark"] {
+    --background-color: #363537;
+    --text-color: #FAFAFA;
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+```
+
+```javascript
+document.addEventListener('DOMContentLoaded', () => {
+    const app = document.getElementById('app');
+    const toggleButton = document.getElementById('dark-mode-toggle');
+
+    const currentTheme = localStorage.getItem('theme') ? localStorage.getItem('theme') : null;
+    if (currentTheme) {
+        app.dataset.theme = currentTheme;
+    }
+
+    toggleButton.addEventListener('click', () => {
+        switchTheme();
+    });
+
+    function switchTheme() {
+        let theme = app.dataset.theme;
+        if (theme === "dark") {
+            app.dataset.theme = "light";
+            localStorage.setItem('theme', 'light');
+        } else {
+            app.dataset.theme = "dark";
+            localStorage.setItem('theme', 'dark');
+        }
+    }
+});
