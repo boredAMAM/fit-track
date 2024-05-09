@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from datetime import datetime
 import os
 from flask_sqlalchemy import SQLAlchemy
+from functools import lru_cache
 
 app = Flask(__name__)
 
@@ -40,6 +41,7 @@ def add_workout():
     new_session = WorkoutSession(duration_minutes=data['duration_minutes'], activity_type=data['activity_type'], user_id=data['user_id'])
     db.session.add(new_session)
     db.session.commit()
+    _clear_cache(user_id=data['user_id'])  # Clear cache for this user
     return jsonify({'message': 'Workout session added'}), 201
 
 @app.route('/diet', methods=['POST'])
@@ -48,20 +50,30 @@ def add_diet():
     new_diet = DietaryIntake(meal_type=data['meal_type'], description=data['description'], calories=data['calories'], user_id=data['user_id'])
     db.session.add(new_diet)
     db.session.commit()
+    _clear_cache(user_id=data['user_id'])  # Clear cache for this user
     return jsonify({'message': 'Dietary intake added'}), 201
 
-@app.route('/stats/<int:user_id>', methods=['GET'])
-def get_stats(user_id):
+# Using lru_cache to cache get_stats calculations
+@lru_cache(maxsize=32)
+def _get_stats_cached(user_id):
     workouts = WorkoutSession.query.filter_by(user_id=user_id).all()
     diets = DietaryIntake.query.filter_by(user_id=user_id).all()
     
     total_calories = sum(diet.calories for diet in diets)
     total_duration = sum(workout.duration_minutes for workout in workouts)
     
-    return jsonify({
+    return {
         'total_calories_consumed': total_calories,
         'total_workout_duration': total_duration
-    })
+    }
+
+def _clear_cache(user_id):
+    _get_stats_cached.cache_clear()
+
+@app.route('/stats/<int:user_id>', methods=['GET'])
+def get_stats(user_id):
+    stats = _get_stats_cached(user_id)
+    return jsonify(stats)
 
 if __name__ == '__main__':
     app.run(debug=True, port=os.getenv('PORT', 5000))
