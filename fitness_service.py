@@ -44,6 +44,20 @@ def add_workout():
     _clear_cache(user_id=data['user_id'])  # Clear cache for this user
     return jsonify({'message': 'Workout session added'}), 201
 
+@app.route('/workout/<int:session_id>', methods=['PUT'])
+def update_workout(session_id):
+    data = request.get_json()
+    session = WorkoutSession.query.get(session_id)
+    if not session:
+        return jsonify({'message': 'Session not found'}), 404
+
+    session.duration_minutes = data.get('duration_minutes', session.duration_minutes)
+    session.activity_type = data.get('activity_type', session.activity_type)
+    db.session.commit()
+    _clear_cache(user_id=session.user_id)
+    return jsonify({'message': 'Workout session updated'}), 200
+
+
 @app.route('/diet', methods=['POST'])
 def add_diet():
     data = request.get_json()
@@ -52,6 +66,20 @@ def add_diet():
     db.session.commit()
     _clear_cache(user_id=data['user_id'])  # Clear cache for this user
     return jsonify({'message': 'Dietary intake added'}), 201
+
+@app.route('/diet/<int:diet_id>', methods=['PUT'])
+def update_diet(diet_id):
+    data = request.get_json()
+    diet = DietaryIntake.query.get(diet_id)
+    if not diet:
+        return jsonify({'message': 'Diet not found'}), 404
+
+    diet.meal_type = data.get('meal_type', diet.meal_type)
+    diet.description = data.get('description', diet.description)
+    diet.calories = data.get('calories', diet.calories)
+    db.session.commit()
+    _clear_cache(user_id=diet.user_id)
+    return jsonify({'message': 'Dietary intake updated'}), 200
 
 # Using lru_cache to cache get_stats calculations
 @lru_cache(maxsize=32)
