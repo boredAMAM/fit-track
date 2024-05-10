@@ -25,10 +25,17 @@ interface ProgressReport {
   endDate: string;
 }
 
+interface FetchLogsOptions {
+  userId: number;
+  startDate?: string;
+  endDate?: string;
+}
+
 const apiModule = {
-  async fetchFitnessLogs(userId: number) {
+  async fetchFitnessLogs({ userId, startDate, endDate }: FetchLogsOptions) {
     try {
-      const response = await axios.get(`${apiUrl}/fitness-logs/${userId}`);
+      const params = startDate && endDate ? { startDate, endDate } : {};
+      const response = await axios.get(`${apiUrl}/fitness-logs/${userId}`, { params });
       return response.data;
     } catch (error) {
       console.error('Error fetching fitness logs', error);
@@ -58,9 +65,10 @@ const apiModule = {
     }
   },
 
-  async fetchDietaryLogs(userId: number) {
+  async fetchDietaryLogs({ userId, startDate, endDate }: FetchLogsOptions) {
     try {
-      const response = await axios.get(`${apiUrl}/dietary-logs/${userId}`);
+      const params = startDate && endDate ? { startDate, endDate } : {};
+      const response = await axios.get(`${apiUrl}/dietary-logs/${userId}`, { params });
       return response.data;
     } catch (error) {
       console.error('Error fetching dietary logs', error);
