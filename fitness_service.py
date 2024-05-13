@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from flask_sqlalchemy import SQLAlchemy
 from functools import lru_cache
@@ -38,7 +38,11 @@ def create_tables():
 @app.route('/workout', methods=['POST'])
 def add_workout():
     data = request.get_json()
-    new_session = WorkoutSession(duration_minutes=data['duration_minutes'], activity_type=data['activity_type'], user_id=data['user_id'])
+    new_session = WorkoutSession(
+        duration_minutes=data['duration_minutes'], 
+        activity_type=data['activity_type'], 
+        user_id=data['user_id']
+    )
     db.session.add(new_session)
     db.session.commit()
     _clear_cache(user_id=data['user_id'])  # Clear cache for this user
@@ -54,14 +58,18 @@ def update_workout(session_id):
     session.duration_minutes = data.get('duration_minutes', session.duration_minutes)
     session.activity_type = data.get('activity_type', session.activity_type)
     db.session.commit()
-    _clear_cache(user_id=session.user_id)
+    _clear_cache(user_id=session.user_id)  # Clear cache for this user
     return jsonify({'message': 'Workout session updated'}), 200
-
 
 @app.route('/diet', methods=['POST'])
 def add_diet():
     data = request.get_json()
-    new_diet = DietaryIntake(meal_type=data['meal_type'], description=data['description'], calories=data['calories'], user_id=data['user_id'])
+    new_diet = DietaryIntake(
+        meal_type=data['meal_type'], 
+        description=data['description'], 
+        calories=data['calories'], 
+        user_id=data['user_id']
+    )
     db.session.add(new_diet)
     db.session.commit()
     _clear_cache(user_id=data['user_id'])  # Clear cache for this user
@@ -78,18 +86,17 @@ def update_diet(diet_id):
     diet.description = data.get('description', diet.description)
     diet.calories = data.get('calories', diet.calories)
     db.session.commit()
-    _clear_cache(user_id=diet.user_id)
+    _clear_cache(user_id=diet.user_id)  # Clear cache for this user
     return jsonify({'message': 'Dietary intake updated'}), 200
 
-# Using lru_cache to cache get_stats calculations
 @lru_cache(maxsize=32)
 def _get_stats_cached(user_id):
     workouts = WorkoutSession.query.filter_by(user_id=user_id).all()
     diets = DietaryIntake.query.filter_by(user_id=user_id).all()
-    
+
     total_calories = sum(diet.calories for diet in diets)
     total_duration = sum(workout.duration_minutes for workout in workouts)
-    
+
     return {
         'total_calories_consumed': total_calories,
         'total_workout_duration': total_duration
@@ -101,6 +108,34 @@ def _clear_cache(user_id):
 @app.route('/stats/<int:user_id>', methods=['GET'])
 def get_stats(user_id):
     stats = _get_stats_cached(user_id)
+    return jsonify(stats)
+
+@app.route('/stats/date_range/<int:user_id>', methods=['POST'])
+def date_range_stats(user_id):
+    data = request.get_json()
+    start_date = datetime.strptime(data['start_date'], "%Y-%m-%d")
+    end_date = datetime.strptime(data['end_date'], "%Y-%m-%d")
+
+    workouts = WorkoutSession.query.filter(
+        WorkoutSession.user_id == user_id,
+        WorkoutSession.date >= start_date,
+        WorkoutSession.date <= end_date
+    ).all()
+
+    diets = DietaryIntake.query.filter(
+        DietaryIntake.user_id == user_id,
+        DietaryIntake.date >= start_date,
+        DietaryIntake.date <= end_date
+    ).all()
+
+    total_calories = sum(diet.calories for diet in diets)
+    total_duration = sum(workout.duration_minutes for workout in workouts)
+
+    stats = {
+        'total_calories_consumed': total_calories,
+        'total_workout_duration': total_duration
+    }
+
     return jsonify(stats)
 
 if __name__ == '__main__':
