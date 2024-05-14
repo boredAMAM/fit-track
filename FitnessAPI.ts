@@ -43,24 +43,27 @@ class SimpleCache {
   set(key: string, value: any) {
     this.cache.set(key, value);
   }
+
+  invalidate(cacheKeyPrefix: string) {
+    [...this.cache.keys()].forEach(key => {
+      if (key.startsWith(cacheKeyPrefix)) {
+        this.cache.delete(key);
+      }
+    });
+  }
 }
 
 const apiCache = new SimpleCache();
 
 const apiModule = {
-  async fetchFitnessLogs({ userId, startDate, endDate }: FetchLogsOptions) {
+  async fetchFitnessLogs(options: FetchLogsOptions) {
     try {
-      const cacheKey = `fitness-logs-${userId}-${startDate}-${endDate}`;
+      const cacheKey = this.generateCacheKey('fitness-logs', options);
       if (apiCache.has(cacheKey)) {
         console.log('Serving from cache');
         return apiCache.get(cacheKey);
       }
-
-      const params = startDate && endDate ? { startDate, endDate } : {};
-      const response = await axios.get(`${apiUrl}/fitness-logs/${userId}`, { params });
-
-      apiCache.set(cacheKey, response.data);
-      return response.data;
+      return await this.fetchAndCacheFitnessLogs(options, cacheKey);
     } catch (error) {
       console.error('Error fetching fitness logs', error);
       throw error;
@@ -68,14 +71,7 @@ const apiModule = {
   },
 
   async createFitnessLog(fitnessLog: FitnessLog) {
-    // Invalidate cache when a new log is created
-    const cacheKey = `fitness-logs-${fitnessLog.userId}-`;
-    // A simplistic approach to invalidate related cache keys
-    [...apiCache.cache.keys()].forEach(key => {
-      if (key.startsWith(cacheKey)) {
-        apiCache.cache.delete(key);
-      }
-    });
+    this.invalidateFitnessLogCache(fitnessLog.userId);
 
     try {
       const response = await axios.post(`${apiUrl}/fitness-logs`, fitnessLog);
@@ -86,8 +82,21 @@ const apiModule = {
     }
   },
 
-  // Similar implementations for updateFitnessLog, fetchDietaryLogs, createDietaryLog,
-  // updateDietaryLog, and fetchProgressReports follow, considering cache invalidation on updates.
+  generateCacheKey(prefix: string, { userId, startDate = '', endDate = '' }: FetchLogsOptions): string {
+    return `${prefix}-${userId}-${startDate}-${endDate}`;
+  },
+
+  async fetchAndCacheFitnessLogs(options: FetchLogsOptions, cacheKey: string) {
+    const params = options.startDate && options.endDate ? { startDate: options.startDate, endDate: options.endDate } : {};
+    const response = await axios.get(`${apiUrl}/fitness-logs/${options.userId}`, { params });
+    apiCache.set(cacheKey, response.data);
+    return response.data;
+  },
+
+  invalidateFitnessLogCache(userId: number) {
+    const cacheKey = `fitness-logs-${userId}-`;
+    apiCache.invalidate(cacheKey);
+  },
 };
 
 export default apiModule;
