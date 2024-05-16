@@ -3,34 +3,34 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 import './FitTrack.css';
 
 const FitTrack: React.FC = () => {
-  const [dailyActivity, setDailyActivity] = useState<Array<any>>([]);
-  const [diet, setDiet] = useState<Array<any>>([]);
-  const [goals, setGoals] = useState({ calorieIntake: 2000, steps: 10000, waterIntake: 2 });
-  const [userPreferences, setUserPreferences] = useState({ theme: 'light', notifications: true });
+  const [activityLogs, setActivityLogs] = useState<Array<any>>([]);
+  const [nutritionInfo, setNutritionInfo] = useState<Array<any>>([]);
+  const [fitnessGoals, setFitnessGoals] = useState({ calorieTarget: 2000, stepTarget: 10000, waterTargetLiters: 2 });
+  const [preferences, setPreferences] = useState({ colorScheme: 'light', enableNotifications: true });
 
-  const fetchDailyActivity = async () => {
+  const fetchActivityData = async () => {
     const response = await fetch(`${process.env.REACT_APP_API_URL}/daily-activity`);
     const data = await response.json();
-    setDailyActivity(data);
+    setActivityLogs(data);
   };
 
-  const fetchDiet = async () => {
+  const fetchNutritionData = async () => {
     const response = await fetch(`${process.env.REACT_APP_API_URL}/diet`);
     const data = await response.json();
-    setDiet(data);
+    setNutritionInfo(data);
   };
 
   useEffect(() => {
-    fetchDailyActivity();
-    fetchDiet();
+    fetchActivityData();
+    fetchNutritionData();
   }, []);
 
-  const handleGoalChange = (newGoals: any) => {
-    setGoals(newGoals);
+  const updateGoals = (newFitnessGoals: any) => {
+    setFitnessGoals(newFitnessGoals);
   };
 
-  const handleUserPreferencesChange = (newPreferences: any) => {
-    setUserPreferences(newPreferences);
+  const updatePreferences = (newPreferences: any) => {
+    setPreferences(newPreferences);
   };
 
   return (
@@ -51,7 +51,7 @@ const FitTrack: React.FC = () => {
 
       <section className="progressVisualization">
         <h2>Progress Visualization</h2>
-        <LineChart width={600} height={300} data={dailyActivity}>
+        <LineChart width={600} height={300} data={activityLogs}>
           <Line type="monotone" dataKey="steps" stroke="#8884d8" />
           <CartesianGrid stroke="#ccc" />
           <XAxis dataKey="date" />
